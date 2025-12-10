@@ -2,44 +2,100 @@ import re
 import subprocess
 from pathlib import Path
 
+import requests
+
 
 class AppImage:
     def __init__(
-        self, installer: Path, name: str, has_version_file: bool, icon: Path, exe: Path
+        self,
+        name: str,
+        installer: Path,
+        exe: Path | None = None,
+        version_file: Path | None = None,
+        version: str | None = None,
+        latest_release_url: str | None = None,
+        icon: Path | None = None,
     ):
-        self.installer = installer
         self.name = name
-        self.has_version_file = has_version_file
-        self.icon = icon
+        self.installer = installer
         self.exe = exe
+        self.version_file = version_file
+        self.version = version
+        self.latest_release_url = latest_release_url
+        self.icon = icon
 
     def __repr__(self) -> str:
-        return f"AppImage(installer={self.installer}, name={self.name}, has_version_file={self.has_version_file}, icon={self.icon}, exe={self.exe})"
+        return f"AppImage(name={self.name}, installer={self.installer}, exe={self.exe}, version_file={self.version_file}, version={self.version}, latest_release_url={self.latest_release_url}, icon={self.icon})"
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, AppImage):
-            return self.installer == value.installer
+            return (
+                self.name == value.name
+                and self.installer == value.installer
+                and self.exe == value.exe
+                and self.version_file == value.version_file
+                and self.version == value.version
+                and self.icon == value.icon
+                and self.latest_release_url == value.latest_release_url
+            )
         return False
 
     def get_version(self) -> str | None:
-        if not self.has_version_file:
-            # 1.17.10b is the version - below currently captures without b
-            try:
-                version_output = subprocess.check_output(
-                    [self.exe, "--version"]
-                ).decode("utf-8")
-                print("version_output", version_output)
-                version = re.search(r"(\d+\.\d+\.\d+)", version_output).group(1)  # type: ignore #
-                print("version", version)
-                self.version = version
-                return version
-            except Exception as e:
-                print(f"Unable to get version: {e}")
+        if not self.version_file:
+            if self.exe:
+                try:
+                    version_output = subprocess.check_output(
+                        [self.exe, "--version"]
+                    ).decode("utf-8")
+                    # print("version_output", version_output)
+                    # 1.17.10b is zen's version - below currently captures without b
+                    version = re.search(r"(\d+\.\d+\.\d+)", version_output).group(1)  # type: ignore
+                    print("version:", version)
+                    self.version = version
+                    return version
+                except Exception as e:
+                    print(f"Unable to get version: {e}")
+                    return None
+            else:
+                print("Exe not set")
                 return None
         else:
-            return self.get_version_from_file()
+            return self._get_version_from_file()
 
-    def get_version_from_file(self) -> str:
-        with open(self.has_version_file) as f:
-            # TODO parse the file and look for the version (heroic.desktop, X-AppImage-Version=2.18.1)
-            return f.read().strip()
+    def update(self) -> None:
+        self.version = self.get_version()
+        if self.version is None:
+            print("Update failed: unable to get version")
+            return
+        latest_release = self._get_latest_release()
+        if latest_release is None:
+            print("Update failed: unable to get latest release")
+            return
+        print("Everything is good, start the update")
+
+    def _get_version_from_file(self) -> str | None:
+        if self.version_file:
+            with open(self.version_file) as f:
+                try:
+                    file_contents = f.read().strip()
+                    version = re.search(r"(\d+\.\d+\.\d+)", file_contents).group(1)  # type: ignore
+                    print("version:", version)
+                    self.version = version
+                    return version
+                except Exception as e:
+                    print(f"Unable to get version from file: {e}")
+                    return None
+
+    def _get_latest_release(self) -> str | None:
+        if self.latest_release_url:
+            try:
+                response = requests.get(self.latest_release_url)
+                if response.status_code == 200:
+                    latest_release = re.search(
+                        r"(?:v)?(\d+\.\d+\.\d+)", response.json()["tag_name"]
+                    ).group(1)  # type: ignore
+                    print("latest_release:", latest_release)
+                    return latest_release
+            except Exception as e:
+                print(f"Unable to get latest release: {e}")
+                return None
