@@ -5,5 +5,6 @@ description = "CLI tool handling .AppImage updates and potentially extraction or
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "packaging>=25.0",
     "requests>=2.32.5",
 ]

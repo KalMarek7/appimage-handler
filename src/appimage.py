@@ -3,6 +3,7 @@ import subprocess
 from pathlib import Path
 
 import requests
+from packaging.version import Version
 
 
 class AppImage:
@@ -10,18 +11,18 @@ class AppImage:
         self,
         name: str,
         installer: Path,
+        latest_release_url: str,
         exe: Path | None = None,
         version_file: Path | None = None,
         version: str | None = None,
-        latest_release_url: str | None = None,
         icon: Path | None = None,
     ):
         self.name = name
         self.installer = installer
+        self.latest_release_url = latest_release_url
         self.exe = exe
         self.version_file = version_file
         self.version = version
-        self.latest_release_url = latest_release_url
         self.icon = icon
 
     def __repr__(self) -> str:
@@ -68,10 +69,18 @@ class AppImage:
             print("Update failed: unable to get version")
             return
         latest_release = self._get_latest_release()
-        if latest_release is None:
+        if latest_release == {}:
             print("Update failed: unable to get latest release")
             return
         print("Everything is good, start the update")
+        # TODO Version comparison (using 'packaging')
+        if Version(self.version) < Version(latest_release["version"]):
+            print("Update available")
+            # TODO Download (to some temp dir)
+            print("Will start the download from", latest_release["asset_url"])
+            # TODO Extract (to existing path (self.exe?), replace all files)
+        else:
+            print("No update available")
 
     def _get_version_from_file(self) -> str | None:
         if self.version_file:
@@ -86,16 +95,43 @@ class AppImage:
                     print(f"Unable to get version from file: {e}")
                     return None
 
-    def _get_latest_release(self) -> str | None:
+    def _get_latest_release(self) -> dict:
         if self.latest_release_url:
             try:
                 response = requests.get(self.latest_release_url)
                 if response.status_code == 200:
-                    latest_release = re.search(
+                    latest_release = {}
+                    latest_version = re.search(
                         r"(?:v)?(\d+\.\d+\.\d+)", response.json()["tag_name"]
                     ).group(1)  # type: ignore
-                    print("latest_release:", latest_release)
+                    print("latest_version:", latest_version)
+                    latest_release["version"] = latest_version
+                    for asset in response.json()["assets"]:
+                        if asset["name"] == self.installer.name:
+                            latest_release["asset_url"] = asset["browser_download_url"]
                     return latest_release
             except Exception as e:
                 print(f"Unable to get latest release: {e}")
-                return None
+                return {}
+        print("No latest release url set")
+        return {}
+
+    def _download(self, url: str, path: Path) -> None:
+        try:
+            with requests.get(url, stream=True) as response:
+                response.raise_for_status()
+                # Handle File System (I/O) Errors
+                try:
+                    with open(path, "wb") as f:
+                        for chunk in response.iter_content(chunk_size=8192):
+                            if chunk:
+                                f.write(chunk)
+                except OSError as io_error:
+                    # Catch PermissionError, Disk Full, Quota Exceeded, etc.
+                    error_message = (
+                        f"File system error occurred while saving {path}: {io_error}"
+                    )
+                    raise Exception(error_message)
+        except requests.exceptions.RequestException as e:
+            error_message = f"Download failed for {url}: {e}"
+            raise Exception(error_message)

@@ -8,3 +8,12 @@ wheels/
 
 # Virtual environments
 .venv
+
+# NPM
+package.json
+package-lock.json
+node_modules/
+
+# Notes
+notes.txt
+

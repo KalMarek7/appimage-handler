@@ -1,1 +1,1 @@
-python3 -m unittest discover -s tests
+./.venv/bin/python3 -m unittest discover -s tests

@@ -14,6 +14,7 @@ class TestAppImage(unittest.TestCase):
         appimage = AppImage(
             name="zen",
             installer=Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
+            latest_release_url="https://api.github.com/repos/zen-browser/desktop/releases/latest",
         )
         print(appimage)
         self.assertEqual(
@@ -21,7 +22,7 @@ class TestAppImage(unittest.TestCase):
             AppImage(
                 "zen",
                 Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
-                None,
+                "https://api.github.com/repos/zen-browser/desktop/releases/latest",
                 None,
                 None,
                 None,
@@ -36,6 +37,7 @@ class TestGetVersion(unittest.TestCase):
         appimage = AppImage(
             name="zen",
             installer=Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
+            latest_release_url="https://api.github.com/repos/zen-browser/desktop/releases/latest",
             exe=Path("/home/marek/.local/share/zen/zen"),
         )
         version = appimage.get_version()
@@ -48,6 +50,7 @@ class TestGetVersion(unittest.TestCase):
             installer=Path(
                 "/home/marek/Downloads/App Installers/Heroic-2.18.1-linux-x86_64.AppImage"
             ),
+            latest_release_url="https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest",
             version_file=Path("/home/marek/.local/share/heroic/heroic.desktop"),
         )
         version = appimage._get_version_from_file()
@@ -56,14 +59,31 @@ class TestGetVersion(unittest.TestCase):
 
 class TestGetLatestRelease(unittest.TestCase):
     def test_get_latest_release(self):
-        print("Testing get_latest_release")
+        print("Testing _get_latest_release")
         appimage = AppImage(
             name="zen",
             installer=Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
             latest_release_url="https://api.github.com/repos/zen-browser/desktop/releases/latest",
         )
-        version = appimage._get_latest_release()
-        self.assertEqual(version, "1.17.12")
+        latest_release = appimage._get_latest_release()
+        self.assertEqual(latest_release.get("version"), "1.17.13")
+        self.assertEqual(
+            latest_release.get("asset_url"),
+            "https://github.com/zen-browser/desktop/releases/download/1.17.13b/zen-x86_64.AppImage",
+        )
+        appimage2 = AppImage(
+            name="heroic",
+            installer=Path(
+                "/home/marek/Downloads/App Installers/Heroic-2.18.1-linux-x86_64.AppImage"
+            ),
+            latest_release_url="https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest",
+            version_file=Path("/home/marek/.local/share/heroic/heroic.desktop"),
+        )
+        self.assertEqual(appimage2._get_latest_release().get("version"), "2.18.1")
+        self.assertEqual(
+            appimage2._get_latest_release().get("asset_url"),
+            "https://github.com/Heroic-Games-Launcher/HeroicGamesLauncher/releases/download/v2.18.1/Heroic-2.18.1-linux-x86_64.AppImage",
+        )
 
 
 class TestUpdate(unittest.TestCase):
@@ -72,23 +92,40 @@ class TestUpdate(unittest.TestCase):
         appimage = AppImage(
             name="zen",
             installer=Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
-            exe=Path("/home/marek/.local/share/zen/zen"),
             latest_release_url="https://api.github.com/repos/zen-browser/desktop/releases/latest",
+            exe=Path("/home/marek/.local/share/zen/zen"),
         )
         appimage.update()
         self.assertEqual(appimage.version, "1.17.10")
-        self.assertEqual(appimage._get_latest_release(), "1.17.12")
+        # self.assertEqual(appimage._get_latest_release().get("version"), "1.17.13")
         appimage2 = AppImage(
             name="heroic",
             installer=Path(
                 "/home/marek/Downloads/App Installers/Heroic-2.18.1-linux-x86_64.AppImage"
             ),
-            version_file=Path("/home/marek/.local/share/heroic/heroic.desktop"),
             latest_release_url="https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest",
+            version_file=Path("/home/marek/.local/share/heroic/heroic.desktop"),
         )
         appimage2.update()
         self.assertEqual(appimage2.version, "2.18.1")
-        self.assertEqual(appimage2._get_latest_release(), "2.18.1")
+        # self.assertEqual(appimage2._get_latest_release().get("version"), "2.18.1")
+
+
+class TestDownload(unittest.TestCase):
+    def test_download(self):
+        print("Testing download")
+        appimage = AppImage(
+            name="zen",
+            installer=Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
+            latest_release_url="https://api.github.com/repos/zen-browser/desktop/releases/latest",
+        )
+        appimage._download(
+            "https://github.com/zen-browser/desktop/releases/download/1.17.13b/zen-x86_64.AppImage",
+            Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage"),
+        )
+        self.assertTrue(
+            Path("/home/marek/Downloads/App Installers/zen-x86_64.AppImage").exists()
+        )
 
 
 if __name__ == "__main__":
