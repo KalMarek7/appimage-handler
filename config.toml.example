@@ -1,12 +1,18 @@
-~/.config/appimage-handler/apps.toml
+~/.config/appimage-handler/config.toml
+
+[paths.download]
+path = "/home/marek/Downloads/App Installers"
+
+[paths.desktop]
+path = "/home/marek/.local/share/applications
 
 [apps.zen]
 name = "zen"
-installer = "/home/marek/Applications/zen-x86_64.AppImage"
+base_dir = "/home/marek/.local/share/zen"
 latest_release_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
 
 [apps.heroic]
 name = "heroic"
-installer = "/home/marek/Applications/Heroic-2.18.1-linux-x86_64.AppImage"
+base_dir = "/home/marek/.local/share/heroic"
 latest_release_url = "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest"
 version_file = "/home/marek/.local/share/heroic/heroic.desktop"
