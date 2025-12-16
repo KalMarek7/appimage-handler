@@ -1,1 +1,2 @@
-python3 -m src.main
+#!/bin/bash
+uv run -m src.main "$@"
