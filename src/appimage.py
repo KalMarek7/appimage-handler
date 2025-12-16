@@ -9,6 +9,8 @@ from pathlib import Path
 import requests
 from packaging.version import Version
 
+from src.config import CONFIG
+
 
 class AppImage:
     def __init__(
@@ -45,9 +47,10 @@ class AppImage:
     def get_version(self) -> str | None:
         if not self.version_file:
             try:
-                version_output = subprocess.check_output(
-                    [Path(f"{self.base_dir}/{self.name}"), "--version"]
-                ).decode("utf-8")
+                path = self.base_dir / self.name
+                version_output = subprocess.check_output([path, "--version"]).decode(
+                    "utf-8"
+                )
                 # 1.17.10b is zen's version - below currently captures without b
                 version = re.search(r"(\d+\.\d+\.\d+)", version_output).group(1)  # type: ignore
                 print("version:", version)
@@ -119,8 +122,9 @@ class AppImage:
         return {}
 
     def _download(self, url: str, filename: str) -> None:
-        # config.paths.download.path
-        path = Path(f"/home/marek/Downloads/App Installers/{filename}")
+        print(CONFIG.get("paths", {}))
+        path = CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
+        path = Path(path) / filename
         print("Downloading", url, "to", path)
         try:
             with requests.get(url, stream=True) as response:
@@ -140,17 +144,13 @@ class AppImage:
             raise Exception(error_message)
 
     def _extract(self, filename: str) -> str:
-        # config.paths.download.path
-        path = Path(f"/home/marek/Downloads/App Installers/{filename}")
+        download_dir = CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
+        path = Path(download_dir) / filename
         print("Extracting", path)
         # --- 1. Set Executable Permission ---
         try:
-            # Retrieve the current permissions (stat) of the file
             current_stat = os.stat(path)
-            # Calculate the new mode (permissions) by adding the executable bit for the owner.
-            # stat.S_IXUSR is the constant for the 'Execute by owner' bit.
             new_mode = current_stat.st_mode | stat.S_IXUSR
-            # Apply the new permissions
             os.chmod(path, new_mode)
             print(f"Set executable permission on: {path}")
         except Exception as e:
@@ -174,14 +174,18 @@ class AppImage:
             return "Extracted to " + tmpdir
 
     def _move(self, temp_path: str) -> None:
-        # self.base_dir
-        to_path = Path("/home/marek/Downloads/App Installers/scripts")
+        to_path = Path(self.base_dir)
         print("Moving", temp_path, "to", to_path)
-        try:
-            if to_path:
+        if to_path.is_dir():
+            try:
+                if to_path:
+                    shutil.rmtree(to_path)
+                    os.mkdir(to_path)
                 for item_name in os.listdir(temp_path):
                     source_item = Path(temp_path) / item_name
                     destination_item = to_path / item_name
                     shutil.move(str(source_item), str(destination_item))
-        except Exception as e:
-            raise Exception(f"Unable to move {temp_path} to {to_path}: {e}")
+            except Exception as e:
+                raise Exception(f"Unable to move {temp_path} to {to_path}: {e}")
+        else:
+            raise Exception(f"{to_path} is not a directory")

@@ -1,18 +1,18 @@
-~/.config/appimage-handler/config.toml
-
 [paths.download]
-path = "/home/marek/Downloads/App Installers"
+path = "~/Downloads/App Installers"
 
 [paths.desktop]
-path = "/home/marek/.local/share/applications
+path = "~/.local/share/applications"
 
 [apps.zen]
 name = "zen"
-base_dir = "/home/marek/.local/share/zen"
+base_dir = "~/.local/share/zen"
 latest_release_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
+user_data_dir = "~/.zen"
 
 [apps.heroic]
 name = "heroic"
-base_dir = "/home/marek/.local/share/heroic"
+base_dir = "~/.local/share/heroic"
 latest_release_url = "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest"
-version_file = "/home/marek/.local/share/heroic/heroic.desktop"
+version_file = "~/.local/share/heroic/heroic.desktop"
+user_data_dir = "~/.config/heroic"
