@@ -8,11 +8,15 @@ path = "~/.local/share/applications"
 name = "zen"
 base_dir = "~/.local/share/zen"
 latest_release_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
+# optional
 user_data_dir = "~/.zen"
+icon = "~/.local/share/zen/zen.png"
 
 [apps.heroic]
 name = "heroic"
 base_dir = "~/.local/share/heroic"
 latest_release_url = "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest"
 version_file = "~/.local/share/heroic/heroic.desktop"
+# optional
 user_data_dir = "~/.config/heroic"
+icon = "~/.local/share/heroic/resources/app.asar.unpacked/build/icon-light.png"

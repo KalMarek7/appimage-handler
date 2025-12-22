@@ -103,6 +103,7 @@ class TestExtract(unittest.TestCase):
             name="zen",
             base_dir=Path("~/Downloads/App Installers/scripts/").expanduser(),
             latest_release_url="https://api.github.com/repos/zen-browser/desktop/releases/latest",
+            icon=Path("~/.local/share/zen/zen.png").expanduser(),
         )
         print(appimage._extract("zen-x86_64.AppImage"))
         self.assertTrue(
@@ -118,6 +119,18 @@ class TestExtract(unittest.TestCase):
         self.assertTrue(
             Path("~/Downloads/App Installers/scripts/heroic").exists()
         ) """
+
+
+class TestCreateDesktopEntry(unittest.TestCase):
+    def test_create_desktop_entry(self):
+        print("Testing create_desktop_entry")
+        appimage = AppImage(
+            name="test",
+            base_dir=Path("~/Desktop").expanduser(),
+            latest_release_url="test",
+        )
+        appimage._create_desktop_entry()
+        self.assertTrue(Path("~/Desktop/test.desktop").expanduser().exists())
 
 
 if __name__ == "__main__":

@@ -21,6 +21,7 @@ def get_app(app_name: str) -> AppImage | None:
     """
     apps_config = CONFIG.get("apps", {})
     app_details = apps_config.get(app_name)
+    print(app_details)
 
     if not app_details:
         typer.echo(f"Error: App '{app_name}' not found in configuration.", err=True)
@@ -35,6 +36,9 @@ def get_app(app_name: str) -> AppImage | None:
             if app_details.get("version_file")
             else None
         ),
+        icon=Path(app_details.get("icon")).expanduser()
+        if app_details.get("icon")
+        else None,
     )
 
 
@@ -118,6 +122,38 @@ def version(
                 typer.echo(f"Getting version for {name}...")
                 version = app_to_get.get_version()
                 typer.echo(f"{name} version: {version}")
+                typer.echo("-" * 20)
+
+
+@app.command(help="Install one or all applications.")
+def install(
+    app_name: Annotated[
+        Optional[str],
+        typer.Argument(
+            help="The name of the app to install. If not provided, all apps will be installed."
+        ),
+    ] = None,
+):
+    """
+    Installs a specific application or all of them.
+    """
+    apps_config = CONFIG.get("apps", {})
+    if not apps_config:
+        typer.echo("No applications configured in your config.toml. Nothing to do.")
+        raise typer.Exit()
+
+    if app_name:
+        app_to_install = get_app(app_name)
+        if app_to_install:
+            typer.echo(f"Installing {app_name}...")
+            app_to_install.install()
+    else:
+        typer.echo("Installing all configured applications...")
+        for name in apps_config.keys():
+            app_to_install = get_app(name)
+            if app_to_install:
+                typer.echo(f"Installing {name}...")
+                app_to_install.install()
                 typer.echo("-" * 20)
 
 

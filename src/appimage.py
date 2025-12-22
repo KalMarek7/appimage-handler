@@ -81,6 +81,18 @@ class AppImage:
         else:
             print("No update available")
 
+    def install(self) -> None:
+        latest_release = self._get_latest_release()
+        if latest_release == {}:
+            print("Update failed: unable to get latest release")
+            return
+        print("Everything is good, start the install")
+        print("Will start the download from", latest_release["asset_url"])
+        self._download(latest_release["asset_url"], latest_release["asset_name"])
+        self._extract(latest_release["asset_name"])
+        self._create_desktop_entry()
+        print("Done")
+
     def _get_version_from_file(self) -> str | None:
         if self.version_file:
             with open(self.version_file) as f:
@@ -124,7 +136,7 @@ class AppImage:
     def _download(self, url: str, filename: str) -> None:
         print(CONFIG.get("paths", {}))
         path = CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
-        path = Path(path) / filename
+        path = Path(path).expanduser() / filename
         print("Downloading", url, "to", path)
         try:
             with requests.get(url, stream=True) as response:
@@ -145,7 +157,7 @@ class AppImage:
 
     def _extract(self, filename: str) -> str:
         download_dir = CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
-        path = Path(download_dir) / filename
+        path = Path(download_dir).expanduser() / filename
         print("Extracting", path)
         # --- 1. Set Executable Permission ---
         try:
@@ -170,10 +182,10 @@ class AppImage:
             except Exception as e:
                 raise Exception(f"Unable to extract {path}: {e}")
             # --- 3. Move ---
-            self._move(f"{tmpdir}/squashfs-root")
+            self._move_to_base_dir(f"{tmpdir}/squashfs-root")
             return "Extracted to " + tmpdir
 
-    def _move(self, temp_path: str) -> None:
+    def _move_to_base_dir(self, temp_path: str) -> None:
         to_path = Path(self.base_dir)
         print("Moving", temp_path, "to", to_path)
         if to_path.is_dir():
@@ -188,4 +200,46 @@ class AppImage:
             except Exception as e:
                 raise Exception(f"Unable to move {temp_path} to {to_path}: {e}")
         else:
-            raise Exception(f"{to_path} is not a directory")
+            print(f"{to_path} is not a directory")
+            os.mkdir(to_path)
+            for item_name in os.listdir(temp_path):
+                source_item = Path(temp_path) / item_name
+                destination_item = to_path / item_name
+                shutil.move(str(source_item), str(destination_item))
+
+    def _create_desktop_entry(self) -> None:
+        desktop_entry_path = self.base_dir / f"{self.name}.desktop"
+        print(f"Looking for .desktop entry at {desktop_entry_path}")
+        if desktop_entry_path.is_file():
+            applications_path = Path(
+                CONFIG.get("paths", {}).get("desktop", {}).get("path", {})
+            ).expanduser()
+            print(
+                f"Desktop entry already exists. Copying {desktop_entry_path} to {applications_path}"
+            )
+            if applications_path.is_dir():
+                shutil.copy(desktop_entry_path, applications_path)
+            print("Replacing Exec and Icon lines in .desktop entry")
+            with open(desktop_entry_path, "r") as f:
+                lines = f.readlines()
+            with open(applications_path / f"{self.name}.desktop", "w") as f:
+                for line in lines:
+                    if line.startswith("Exec="):
+                        print("Found Exec line:", line.strip())
+                        s = line.split(" ")
+                        s[0] = f"Exec={self.base_dir}/{self.name}"
+                        line = " ".join(s)
+                    elif line.startswith("Icon=") and self.icon:
+                        print("Found Icon line:", line.strip())
+                        line = f"Icon={self.icon}\n"
+                    f.write(line)
+        else:
+            # TODO: create .desktop entry?
+            """
+            [Desktop Entry]
+            Type=Application
+            Name=My App Name
+            Exec=/path/to/executable
+            Icon=/path/to/icon.png
+            """
+            print("No .desktop entry found in extracted files.")

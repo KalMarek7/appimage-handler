@@ -4,7 +4,7 @@ A simple CLI tool to manage and update your AppImage applications.
 
 ## Overview
 
-This tool is designed for Linux systems like Ubuntu 24.04.3 LTS to automate the process of updating AppImage applications. It works by reading a `config.toml` file where you define the applications you want to manage. For each application, it checks for new versions from sources like GitHub, and if an update is found, it downloads and extracts the new AppImage, replacing the old version.
+This tool is developed with and for Ubuntu 24.04.3 LTS to automate the process of updating AppImage applications. It works by reading a `config.toml` file where you define the applications you want to manage. For each application, it checks for new versions on GitHub latest releases, and if an update is found, it downloads and extracts the new AppImage, replacing the old version.
 
 ## Features
 
@@ -43,6 +43,7 @@ path = "~/.local/share/applications"
 name = "zen"
 base_dir = "~/.local/share/zen"
 latest_release_url = "https://api.github.com/repos/zen-browser/desktop/releases/latest"
+# optional
 user_data_dir = "~/.zen"
 
 [apps.heroic]
@@ -50,6 +51,7 @@ name = "heroic"
 base_dir = "~/.local/share/heroic"
 latest_release_url = "https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest"
 version_file = "~/.local/share/heroic/heroic.desktop"
+# optional
 user_data_dir = "~/.config/heroic"
 ```
 
