@@ -1,13 +1,14 @@
 # AppImage Handler
 
-A simple CLI tool to manage and update your AppImage applications.
+A simple CLI tool to manage AppImage applications.
 
 ## Overview
 
-This tool is developed with and for Ubuntu 24.04.3 LTS to automate the process of updating AppImage applications. It works by reading a `config.toml` file where you define the applications you want to manage. For each application, it checks for new versions on GitHub latest releases, and if an update is found, it downloads and extracts the new AppImage, replacing the old version.
+This tool is developed with and for Ubuntu 24.04.3 LTS to automate the process of 'installing' and updating AppImage applications. It works by reading a `config.toml` file where you define the applications you want to manage. For each application, it checks for new versions on GitHub latest releases, and if an update is found, it downloads and extracts the new AppImage, replacing the old version.
 
 ## Features
 
+-   **Install AppImages**: Download and extract AppImages from a GitHub release page.
 -   **Update AppImages**: Check for new versions of your AppImages from a GitHub release page and update them.
 -   **Manage Multiple Applications**: Configure and manage multiple AppImage applications.
 -   **Simple Configuration**: Uses a simple TOML file for configuration.
@@ -57,7 +58,7 @@ user_data_dir = "~/.config/heroic"
 
 ## Usage
 
-The main entry point is `src/main.py`. You can run it directly with `uv run -m src.main` or create an alias.
+The main entry point is `src/main.py`. You can run it directly with `uv run -m src.main` or create an alias. Run `uv run -m src.main --help` for more information.
 
 ```bash
 #!/bin/bash

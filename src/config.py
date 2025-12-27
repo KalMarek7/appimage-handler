@@ -11,7 +11,7 @@ def load_config() -> dict:
     """
     config_path = Path.home() / ".config" / "appimage_handler" / "example_config.toml"
     if not config_path.is_file():
-        # You could also implement default values here
+        print(f"Config file not found at {config_path}.")
         return {}
 
     with open(config_path, "rb") as f:

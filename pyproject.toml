@@ -1,7 +1,7 @@
 [project]
 name = "appimage-handler"
 version = "0.1.0"
-description = "CLI tool handling .AppImage updates and potentially extraction or desktop integration"
+description = "CLI tool handling .AppImage installation, updates and desktop integration"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
