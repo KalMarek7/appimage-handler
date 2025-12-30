@@ -45,12 +45,11 @@ class TestGetVersion(unittest.TestCase):
     def test_get_version_from_file(self):
         print("Testing get_version_from_file")
         appimage = AppImage(
-            name="heroic",
-            base_dir=Path("~/.local/share/heroic").expanduser(),
-            latest_release_url="https://api.github.com/repos/Heroic-Games-Launcher/HeroicGamesLauncher/releases/latest",
-            version_file=Path("~/.local/share/heroic/heroic.desktop"),
+            name="peazip",
+            base_dir=Path("~/.local/share/peazip").expanduser(),
+            latest_release_url="https://api.github.com/repos/ferion11/PeaZip_Appimage/releases/latest",
         )
-        version = appimage._get_version_from_file()
+        version = appimage.get_version()
         self.assertEqual(version, "2.18.1")
 
 
@@ -129,7 +128,7 @@ class TestCreateDesktopEntry(unittest.TestCase):
             base_dir=Path("~/Desktop").expanduser(),
             latest_release_url="test",
         )
-        appimage._create_desktop_entry()
+        appimage._create_desktop_entry("test.AppImage")
         self.assertTrue(Path("~/Desktop/test.desktop").expanduser().exists())
 
 

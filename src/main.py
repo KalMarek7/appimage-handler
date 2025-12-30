@@ -21,7 +21,7 @@ def get_app(app_name: str) -> AppImage | None:
     """
     apps_config = CONFIG.get("apps", {})
     app_details = apps_config.get(app_name)
-    print(app_details)
+    typer.echo(f"App details: {app_details}")
 
     if not app_details:
         typer.echo(f"Error: App '{app_name}' not found in configuration.", err=True)

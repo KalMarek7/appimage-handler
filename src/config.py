@@ -9,7 +9,7 @@ def load_config() -> dict:
     The expected path is ~/.config/appimage-handler/config.toml.
     If the file doesn't exist, it returns an empty dictionary.
     """
-    config_path = Path.home() / ".config" / "appimage_handler" / "example_config.toml"
+    config_path = Path.home() / ".config" / "appimage_handler" / "config.toml"
     if not config_path.is_file():
         print(f"Config file not found at {config_path}.")
         return {}

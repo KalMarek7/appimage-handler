@@ -46,40 +46,22 @@ class AppImage:
         return False
 
     def get_version(self) -> str | None:
-        if not self.version_file:
-            try:
-                path = self.base_dir / self.name
-                if not path.exists() and self.base_dir.exists():
-                    print("No version_file set. Looking for .desktop entry.")
-                    for i in os.listdir(self.base_dir):
-                        if i.endswith(".desktop"):
-                            print(f"Found {i}")
-                            version = self._get_version_from_file(i)
-                    if version:
-                        self.version = version
-                        return version
-                    else:
-                        print(
-                            f"File {self.name} doesn't exist in {self.base_dir} hence unable to execute with --version. Failed to obtain version from .desktop entry. Check .desktop entry or consider adding a version_file to the config."
-                        )
-                elif not self.base_dir.exists():
-                    raise Exception(
-                        f"Directory {self.base_dir} doesn't exist. The app is not installed."
-                    )
-                else:
-                    version_output = subprocess.check_output(
-                        [path, "--version"]
-                    ).decode("utf-8")
-                    # 1.17.10b is zen's version - below currently captures without b
-                    version = re.search(r"(\d+\.\d+\.\d+)", version_output).group(1)  # type: ignore
-                    print("version:", version)
-                    self.version = version
-                    return version
-            except Exception as e:
-                print(f"Unable to get version: {e}")
-                return None
-        else:
-            return self._get_version_from_file()
+        if self.version_file:
+            return self._get_version_from_file(self.version_file)
+
+        version = self._get_version_from_cli()
+        if version:
+            return version
+
+        version = self._get_version_from_desktop_file()
+        if version:
+            return version
+
+        print(
+            f"Failed to obtain version for {self.name}. "
+            "Check .desktop entry or consider adding a version_file to the config."
+        )
+        return None
 
     def update(self) -> None:
         self.version = self.get_version()
@@ -96,6 +78,7 @@ class AppImage:
             print("Will start the download from", latest_release["asset_url"])
             self._download(latest_release["asset_url"], latest_release["asset_name"])
             self._extract(latest_release["asset_name"])
+            # self._inject_version_line(Path(self.name), latest_release["asset_name"])
             print("Done")
         else:
             print("No update available")
@@ -109,24 +92,73 @@ class AppImage:
         print("Will start the download from", latest_release["asset_url"])
         self._download(latest_release["asset_url"], latest_release["asset_name"])
         self._extract(latest_release["asset_name"])
-        self._create_desktop_entry()
+        self._create_desktop_entry(latest_release["asset_name"])
         print("Done")
 
-    def _get_version_from_file(self, file=None) -> str | None:
-        with open(self.version_file if file is None else self.base_dir / file) as f:  # type: ignore
-            try:
+    def _get_version_from_cli(self) -> str | None:
+        print("Running --version")
+        path = self.base_dir / self.name
+        if not self.base_dir.exists():
+            raise Exception(
+                f"Directory {self.base_dir} doesn't exist. The app is not installed."
+            )
+        if not path.exists():
+            print(f"File {path} doesn't exist.")
+            return None
+        try:
+            version_output = subprocess.check_output([path, "--version"]).decode(
+                "utf-8"
+            )
+            # Improved regex to capture versions like 1.2.3, 1.2.3a, 1.2
+            match = re.search(r"(\d+(?:\.\d+)+[a-zA-Z]*)", version_output)
+            if match:
+                version = match.group(1)
+                print("version:", version)
+                self.version = version
+                return version
+            else:
+                print(f"No version match found in output: {version_output}")
+                return None
+        except subprocess.CalledProcessError as e:
+            print(f"Failed to get version from CLI: {e}")
+            return None
+        except Exception as e:
+            print(f"An unexpected error occurred: {e}")
+            return None
+
+    def _get_version_from_desktop_file(self) -> str | None:
+        print("No version_file set. Looking for .desktop entry.")
+        if not self.base_dir.exists():
+            return None
+        for i in os.listdir(self.base_dir):
+            if i.endswith(".desktop"):
+                print(f"Found {i}")
+                return self._get_version_from_file(self.base_dir / i)
+        else:
+            print("No .desktop file found")
+            return None
+
+    def _get_version_from_file(self, file_path: Path) -> str | None:
+        print(f"Attempting to get version from file: {file_path}")
+        try:
+            with open(file_path) as f:
                 file_contents = f.read().strip()
-                match = re.search(r"(\d+\.\d+\.\d+)", file_contents)
+                # Improved regex to capture versions like 1.2.3, 1.2.3a, 1.2
+                match = re.search(r"(\d+(?:\.\d+)+[a-zA-Z]*)", file_contents)
                 if match:
                     version = match.group(1)
                     print("version:", version)
                     self.version = version
                     return version
                 else:
-                    raise Exception(f"No version match (d.d.d) found in {f.name}")
-            except Exception as e:
-                print(f"Unable to get version from file: {e}")
-                return None
+                    print(f"No version match found in {f.name}")
+                    return None
+        except FileNotFoundError:
+            print(f"File not found: {file_path}")
+            return None
+        except Exception as e:
+            print(f"Unable to get version from file {file_path}: {e}")
+            return None
 
     def _get_latest_release(self) -> dict:
         if self.latest_release_url:
@@ -135,7 +167,7 @@ class AppImage:
                 if response.status_code == 200:
                     latest_release = {}
                     latest_version = re.search(
-                        r"(?:v)?(\d+\.\d+\.\d+)", response.json()["tag_name"]
+                        r"(?:v)?(\d+(?:\.\d+)+[a-zA-Z]*)", response.json()["tag_name"]
                     ).group(1)  # type: ignore
                     print("latest_version:", latest_version)
                     latest_release["version"] = latest_version
@@ -143,9 +175,8 @@ class AppImage:
                     if urlparse(self.latest_release_url).netloc == "api.github.com":
                         for asset in response.json()["assets"]:
                             # Find asset with .AppImage extension and containing x86_64 or x86 architecture
-                            if (
-                                asset["name"].endswith(".AppImage")
-                                and "x86_64" in asset["name"]
+                            if asset["name"].endswith(".AppImage") and (
+                                "x86_64" in asset["name"] or "x64" in asset["name"]
                             ):
                                 latest_release["asset_url"] = asset[
                                     "browser_download_url"
@@ -251,7 +282,7 @@ class AppImage:
                 destination_item = to_path / item_name
                 shutil.move(str(source_item), str(destination_item))
 
-    def _create_desktop_entry(self) -> None:
+    def _create_desktop_entry(self, downloaded_file_name: str) -> None:
         desktop_entry_path = self.base_dir / f"{self.name}.desktop"
         print(f"Looking for .desktop entry at {desktop_entry_path}")
         applications_path = Path(
@@ -266,7 +297,10 @@ class AppImage:
             self._replace_exec_and_icon_lines(
                 desktop_entry_path, applications_path / f"{self.name}.desktop"
             )
-            # self._inject_version_line(desktop_entry_path)
+            self._inject_version_line(
+                applications_path / f"{self.name}.desktop", downloaded_file_name
+            )
+            self._inject_version_line(desktop_entry_path, downloaded_file_name)
         else:
             # TODO: create .desktop entry?
             """
@@ -277,15 +311,19 @@ class AppImage:
             Icon=/path/to/icon.png
             """
             print(f"No {self.name}.desktop entry found in extracted files.")
-            print("Looking for .desktop entries in extracted files")
+            print("Looking for any .desktop entries in extracted files")
             for i in os.listdir(self.base_dir):
                 if i.endswith(".desktop"):
                     print(f"Found {i}")
-                    shutil.copy(self.base_dir / i, applications_path)
-                    self._replace_exec_and_icon_lines(
-                        self.base_dir / i, applications_path / i
+                    shutil.copy(
+                        self.base_dir / i, applications_path / f"{self.name}.desktop"
                     )
-                    # self._inject_version_line(i)
+                    self._replace_exec_and_icon_lines(
+                        self.base_dir / i, applications_path / f"{self.name}.desktop"
+                    )
+                    self._inject_version_line(
+                        applications_path / f"{self.name}.desktop", downloaded_file_name
+                    )
 
     def _replace_exec_and_icon_lines(
         self, source_path: Path, destination_path: Path
@@ -317,10 +355,44 @@ class AppImage:
                         line = f"Icon={self.base_dir}/.DirIcon\n"
                 f.write(line)
 
-    def _inject_version_line(self, filename):
+    def _inject_version_line(
+        self, desktop_file: Path, downloaded_file_name: str
+    ) -> None:
+        replaced = False
         print("Injecting version line in .desktop entry")
-        with open(self.base_dir / filename, "r") as f:
-            match = re.search(r"(\d+\.\d+\.\d+)", filename)
-            if match:
-                version = match.group(1)
-                print("version:", version, f)
+        with open(desktop_file, "r") as fr:
+            lines = fr.readlines()
+        with open(desktop_file, "w") as f:
+            for line in lines:
+                desktop_match = re.search(r"(\d+(?:\.\d+)+[a-zA-Z]*)", line)
+                filename_match = re.search(
+                    r"(\d+(?:\.\d+)+[a-zA-Z]*)", downloaded_file_name
+                )
+                if desktop_match and filename_match:
+                    desktop_version = desktop_match.group(1)
+                    print("Desktop version:", desktop_version, f)
+                    filename_version = filename_match.group(1)
+                    print("Filename version:", filename_version, f)
+                    line = f"Version={filename_version}\n"
+                    f.write(line)
+                    print("Replaced version in .desktop entry at", desktop_file)
+                    replaced = True
+                else:
+                    f.write(line)
+            if not replaced:
+                print("No version found in file:", desktop_file)
+                print(
+                    "Looking for version in downloaded file name:", downloaded_file_name
+                )
+                match = re.search(r"(\d+(?:\.\d+)+[a-zA-Z]*)", downloaded_file_name)
+                if match:
+                    version = match.group(1)
+                    print("version:", version, f)
+                    f.seek(0, os.SEEK_END)
+                    f.write(f"Version={version}\n")
+                    print("Appended version in .desktop entry at", desktop_file)
+                else:
+                    print(
+                        "No version found in downloaded file name:",
+                        downloaded_file_name,
+                    )
