@@ -34,3 +34,8 @@ latest_release_url = "https://api.github.com/repos/ferion11/PeaZip_Appimage/rele
 name = "missioncenter"
 base_dir = "~/.local/share/missioncenter"
 latest_release_url = "https://gitlab.com/api/v4/projects/mission-center-devs%2Fmission-center/releases/permalink/latest"
+
+[apps.audacity]
+name = "audacity"
+base_dir = "~/.local/share/audacity"
+latest_release_url = "https://api.github.com/repos/audacity/audacity/releases/latest"

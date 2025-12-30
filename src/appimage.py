@@ -57,31 +57,32 @@ class AppImage:
         if version:
             return version
 
-        print(
-            f"Failed to obtain version for {self.name}. "
-            "Check .desktop entry or consider adding a version_file to the config."
+        raise Exception(
+            f"Failed to obtain version for {self.name}. The app might not be installed. Check .desktop entry or consider adding a version_file to the config."
         )
-        return None
 
     def update(self) -> None:
-        self.version = self.get_version()
-        if self.version is None:
-            print(f"Update failed: Unable to get version for {self.name}")
-            return
+        try:
+            self.version = self.get_version()
+        except Exception as e:
+            raise Exception(f"Update failed: {e}")
         latest_release = self._get_latest_release()
         if latest_release == {}:
             print("Update failed: unable to get latest release")
             return
         print("Everything is good, start the update")
-        if Version(self.version) < Version(latest_release["version"]):
-            print("Update available")
-            print("Will start the download from", latest_release["asset_url"])
-            self._download(latest_release["asset_url"], latest_release["asset_name"])
-            self._extract(latest_release["asset_name"])
-            # self._inject_version_line(Path(self.name), latest_release["asset_name"])
-            print("Done")
-        else:
-            print("No update available")
+        if self.version:
+            if Version(self.version) < Version(latest_release["version"]):
+                print("Update available")
+                print("Will start the download from", latest_release["asset_url"])
+                self._download(
+                    latest_release["asset_url"], latest_release["asset_name"]
+                )
+                self._extract(latest_release["asset_name"])
+                # self._inject_version_line(Path(self.name), latest_release["asset_name"])
+                print("Done")
+            else:
+                print("No update available")
 
     def install(self) -> None:
         latest_release = self._get_latest_release()
@@ -95,13 +96,32 @@ class AppImage:
         self._create_desktop_entry(latest_release["asset_name"])
         print("Done")
 
+    def remove(self) -> None:
+        if self.base_dir.exists():
+            shutil.rmtree(self.base_dir)
+            print(f"Removed {self.base_dir}")
+        else:
+            print(f"{self.base_dir} does not exist.")
+        self._remove_desktop_entry()
+        print("Done")
+
+    def _remove_desktop_entry(self) -> None:
+        applications_path = Path(
+            CONFIG.get("paths", {}).get("desktop", {}).get("path", {})
+        ).expanduser()
+        desktop_entry_path = applications_path / f"{self.name}.desktop"
+        if desktop_entry_path.exists():
+            os.remove(desktop_entry_path)
+            print(f"Removed {desktop_entry_path}")
+        else:
+            print(f"{desktop_entry_path} does not exist.")
+
     def _get_version_from_cli(self) -> str | None:
         print("Running --version")
         path = self.base_dir / self.name
         if not self.base_dir.exists():
-            raise Exception(
-                f"Directory {self.base_dir} doesn't exist. The app is not installed."
-            )
+            print(f"Directory {self.base_dir} doesn't exist. The app is not installed.")
+            return None
         if not path.exists():
             print(f"File {path} doesn't exist.")
             return None
@@ -202,6 +222,11 @@ class AppImage:
                                 "No x86_64 AppImage found in Gitlab API response"
                             )
                     return latest_release
+                else:
+                    print(
+                        f"Not 200 response from {self.latest_release_url}. Response: {response.status_code} - {response.reason}"
+                    )
+                    return {}
             except Exception as e:
                 print(f"Error in _get_latest_release: {e}")
                 return {}

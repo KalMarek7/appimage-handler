@@ -85,7 +85,10 @@ def update(
             app_to_update = get_app(name)
             if app_to_update:
                 typer.echo(f"Checking for updates for {name}...")
-                app_to_update.update()
+                try:
+                    app_to_update.update()
+                except Exception as e:
+                    typer.echo(f"Error: {e}")
                 typer.echo("-" * 20)
 
 
@@ -112,16 +115,22 @@ def version(
         app_to_get = get_app(app_name)
         if app_to_get:
             typer.echo(f"Getting version for {app_name}...")
-            version = app_to_get.get_version()
-            typer.echo(f"{app_name} version: {version}")
+            try:
+                version = app_to_get.get_version()
+                typer.echo(f"{app_name} version: {version}")
+            except Exception as e:
+                typer.echo(f"Error: {e}")
     else:
         typer.echo("Getting version for all configured applications...")
         for name in apps_config.keys():
             app_to_get = get_app(name)
             if app_to_get:
                 typer.echo(f"Getting version for {name}...")
-                version = app_to_get.get_version()
-                typer.echo(f"{name} version: {version}")
+                try:
+                    version = app_to_get.get_version()
+                    typer.echo(f"{name} version: {version}")
+                except Exception as e:
+                    typer.echo(f"Error: {e}")
                 typer.echo("-" * 20)
 
 
@@ -154,6 +163,38 @@ def install(
             if app_to_install:
                 typer.echo(f"Installing {name}...")
                 app_to_install.install()
+                typer.echo("-" * 20)
+
+
+@app.command(help="Remove one or all applications.")
+def remove(
+    app_name: Annotated[
+        Optional[str],
+        typer.Argument(
+            help="The name of the app to remove. If not provided, all apps will be removed."
+        ),
+    ] = None,
+):
+    """
+    Removes a specific application or all of them.
+    """
+    apps_config = CONFIG.get("apps", {})
+    if not apps_config:
+        typer.echo("No applications configured in your config.toml. Nothing to do.")
+        raise typer.Exit()
+
+    if app_name:
+        app_to_remove = get_app(app_name)
+        if app_to_remove:
+            typer.echo(f"Removing {app_name}...")
+            app_to_remove.remove()
+    else:
+        typer.echo("Removing all configured applications?")
+        for name in apps_config.keys():
+            app_to_remove = get_app(name)
+            if app_to_remove:
+                typer.echo(f"Removing {name}...")
+                app_to_remove.remove()
                 typer.echo("-" * 20)
 
 
