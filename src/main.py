@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Callable, List, Optional
 
 import typer
 from typing_extensions import Annotated
@@ -21,7 +21,6 @@ def get_app(app_name: str) -> AppImage | None:
     """
     apps_config = CONFIG.get("apps", {})
     app_details = apps_config.get(app_name)
-    typer.echo(f"App details: {app_details}")
 
     if not app_details:
         typer.echo(f"Error: App '{app_name}' not found in configuration.", err=True)
@@ -42,6 +41,33 @@ def get_app(app_name: str) -> AppImage | None:
     )
 
 
+def _process_apps(
+    app_names: Optional[List[str]],
+    action_func: Callable[[AppImage], None],
+    all_msg: str,
+):
+    """
+    Helper function to process one or more applications.
+    """
+    apps_config = CONFIG.get("apps", {})
+    if not apps_config:
+        typer.echo("No applications configured in your config.toml. Nothing to do.")
+        raise typer.Exit()
+
+    apps_to_process = app_names if app_names else apps_config.keys()
+    if not app_names:
+        typer.echo(all_msg)
+
+    for app_name in apps_to_process:
+        app = get_app(app_name)
+        if app:
+            try:
+                action_func(app)
+            except Exception as e:
+                typer.echo(f"Error processing {app_name}: {e}", err=True)
+            typer.echo("-" * 20)
+
+
 @app.command(name="list", help="List all configured applications.")
 def list_apps():
     """
@@ -57,145 +83,89 @@ def list_apps():
         typer.echo(f"- {app_name}")
 
 
-@app.command(help="Update one or all applications.")
+@app.command(help="Update one or more applications.")
 def update(
-    app_name: Annotated[
-        Optional[str],
+    app_names: Annotated[
+        Optional[List[str]],
         typer.Argument(
-            help="The name of the app to update. If not provided, all apps will be updated."
+            help="The names of the apps to update. If not provided, all apps will be updated."
         ),
     ] = None,
 ):
     """
-    Updates a specific application or all of them.
+    Updates one or more applications.
     """
-    apps_config = CONFIG.get("apps", {})
-    if not apps_config:
-        typer.echo("No applications configured in your config.toml. Nothing to do.")
-        raise typer.Exit()
 
-    if app_name:
-        app_to_update = get_app(app_name)
-        if app_to_update:
-            typer.echo(f"Checking for updates for {app_name}...")
-            app_to_update.update()
-    else:
-        typer.echo("Updating all configured applications...")
-        for name in apps_config.keys():
-            app_to_update = get_app(name)
-            if app_to_update:
-                typer.echo(f"Checking for updates for {name}...")
-                try:
-                    app_to_update.update()
-                except Exception as e:
-                    typer.echo(f"Error: {e}")
-                typer.echo("-" * 20)
+    def update_action(app: AppImage):
+        typer.echo(f"Checking for updates for {app.name}...")
+        app.update()
+
+    _process_apps(app_names, update_action, "Updating all configured applications...")
 
 
-@app.command(
-    help="Get the currently installed version of an application or all applications."
-)
+@app.command(help="Get the currently installed version of one or more applications.")
 def version(
-    app_name: Annotated[
-        Optional[str],
+    app_names: Annotated[
+        Optional[List[str]],
         typer.Argument(
-            help="The name of the app to get the version of. If not provided, all apps will be updated."
+            help="The names of the apps to get the version of. If not provided, all apps will be processed."
         ),
     ] = None,
 ):
     """
-    Gets the version of a specific application or all of them.
+    Gets the version of one or more applications.
     """
-    apps_config = CONFIG.get("apps", {})
-    if not apps_config:
-        typer.echo("No applications configured in your config.toml. Nothing to do.")
-        raise typer.Exit()
 
-    if app_name:
-        app_to_get = get_app(app_name)
-        if app_to_get:
-            typer.echo(f"Getting version for {app_name}...")
-            try:
-                version = app_to_get.get_version()
-                typer.echo(f"{app_name} version: {version}")
-            except Exception as e:
-                typer.echo(f"Error: {e}")
-    else:
-        typer.echo("Getting version for all configured applications...")
-        for name in apps_config.keys():
-            app_to_get = get_app(name)
-            if app_to_get:
-                typer.echo(f"Getting version for {name}...")
-                try:
-                    version = app_to_get.get_version()
-                    typer.echo(f"{name} version: {version}")
-                except Exception as e:
-                    typer.echo(f"Error: {e}")
-                typer.echo("-" * 20)
+    def version_action(app: AppImage):
+        typer.echo(f"Getting version for {app.name}...")
+        version = app.get_version()
+        typer.echo(f"{app.name} version: {version}")
+
+    _process_apps(
+        app_names, version_action, "Getting version for all configured applications..."
+    )
 
 
-@app.command(help="Install one or all applications.")
+@app.command(help="Install one or more applications.")
 def install(
-    app_name: Annotated[
-        Optional[str],
+    app_names: Annotated[
+        Optional[List[str]],
         typer.Argument(
-            help="The name of the app to install. If not provided, all apps will be installed."
+            help="The names of the apps to install. If not provided, all apps will be installed."
         ),
     ] = None,
 ):
     """
-    Installs a specific application or all of them.
+    Installs one or more applications.
     """
-    apps_config = CONFIG.get("apps", {})
-    if not apps_config:
-        typer.echo("No applications configured in your config.toml. Nothing to do.")
-        raise typer.Exit()
 
-    if app_name:
-        app_to_install = get_app(app_name)
-        if app_to_install:
-            typer.echo(f"Installing {app_name}...")
-            app_to_install.install()
-    else:
-        typer.echo("Installing all configured applications...")
-        for name in apps_config.keys():
-            app_to_install = get_app(name)
-            if app_to_install:
-                typer.echo(f"Installing {name}...")
-                app_to_install.install()
-                typer.echo("-" * 20)
+    def install_action(app: AppImage):
+        typer.echo(f"Installing {app.name}...")
+        app.install()
+
+    _process_apps(
+        app_names, install_action, "Installing all configured applications..."
+    )
 
 
-@app.command(help="Remove one or all applications.")
+@app.command(help="Remove one or more applications.")
 def remove(
-    app_name: Annotated[
-        Optional[str],
+    app_names: Annotated[
+        Optional[List[str]],
         typer.Argument(
-            help="The name of the app to remove. If not provided, all apps will be removed."
+            help="The names of the apps to remove. If not provided, all apps will be removed."
         ),
     ] = None,
 ):
     """
-    Removes a specific application or all of them.
+    Removes one or more applications.
     """
-    apps_config = CONFIG.get("apps", {})
-    if not apps_config:
-        typer.echo("No applications configured in your config.toml. Nothing to do.")
-        raise typer.Exit()
 
-    if app_name:
-        app_to_remove = get_app(app_name)
-        if app_to_remove:
-            typer.echo(f"Removing {app_name}...")
-            app_to_remove.remove()
-    else:
-        typer.echo("Removing all configured applications?")
-        for name in apps_config.keys():
-            app_to_remove = get_app(name)
-            if app_to_remove:
-                typer.echo(f"Removing {name}...")
-                app_to_remove.remove()
-                typer.echo("-" * 20)
+    def remove_action(app: AppImage):
+        typer.echo(f"Removing {app.name}...")
+        app.remove()
+
+    _process_apps(app_names, remove_action, "Removing all configured applications...")
 
 
 def main():

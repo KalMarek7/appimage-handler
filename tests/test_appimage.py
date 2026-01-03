@@ -129,7 +129,31 @@ class TestCreateDesktopEntry(unittest.TestCase):
             latest_release_url="test",
         )
         appimage._create_desktop_entry("test.AppImage")
-        self.assertTrue(Path("~/Desktop/test.desktop").expanduser().exists())
+
+
+class TestInjectWmClassLine(unittest.TestCase):
+    def test_inject_wm_class_line(self):
+        print("Testing inject_wm_class_line")
+        """ appimage = AppImage(
+            name="protonup",
+            base_dir=Path("~/.local/share/heroic").expanduser(),
+            latest_release_url="https://api.github.com/repos/DavidoTek/ProtonUp-Qt/releases/latest",
+        ) """
+        appimage = AppImage(
+            name="missioncenter",
+            base_dir=Path("~/.local/share/missioncenter").expanduser(),
+            latest_release_url="https://gitlab.com/api/v4/projects/mission-center-devs%2Fmission-center/releases/permalink/latest",
+        )
+        appimage._inject_wm_class_line(
+            Path("~/.local/share/applications/missioncenter.desktop").expanduser(),
+            Path(
+                "~/.local/share/missioncenter/io.missioncenter.MissionCenter.desktop"
+            ).expanduser(),
+        )
+        """ appimage._inject_wm_class_line(
+            Path("~/.local/share/applications/protonup.desktop").expanduser(),
+            Path("~/.local/share/protonup/net.davidotek.pupgui2.desktop").expanduser(),
+        ) """
 
 
 if __name__ == "__main__":

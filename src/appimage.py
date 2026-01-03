@@ -79,7 +79,10 @@ class AppImage:
                     latest_release["asset_url"], latest_release["asset_name"]
                 )
                 self._extract(latest_release["asset_name"])
-                # self._inject_version_line(Path(self.name), latest_release["asset_name"])
+                self._inject_version_line(
+                    Path(f"{self.base_dir / self.name}.desktop"),
+                    latest_release["asset_name"],
+                )
                 print("Done")
             else:
                 print("No update available")
@@ -93,7 +96,9 @@ class AppImage:
         print("Will start the download from", latest_release["asset_url"])
         self._download(latest_release["asset_url"], latest_release["asset_name"])
         self._extract(latest_release["asset_name"])
-        self._create_desktop_entry(latest_release["asset_name"])
+        files = self._create_desktop_entry(latest_release["asset_name"])
+        if files:
+            self._inject_wm_class_line(files[0], files[1])
         print("Done")
 
     def remove(self) -> None:
@@ -307,7 +312,9 @@ class AppImage:
                 destination_item = to_path / item_name
                 shutil.move(str(source_item), str(destination_item))
 
-    def _create_desktop_entry(self, downloaded_file_name: str) -> None:
+    def _create_desktop_entry(
+        self, downloaded_file_name: str
+    ) -> tuple[Path, Path] | None:
         desktop_entry_path = self.base_dir / f"{self.name}.desktop"
         print(f"Looking for .desktop entry at {desktop_entry_path}")
         applications_path = Path(
@@ -326,6 +333,7 @@ class AppImage:
                 applications_path / f"{self.name}.desktop", downloaded_file_name
             )
             self._inject_version_line(desktop_entry_path, downloaded_file_name)
+            return (desktop_entry_path, desktop_entry_path)
         else:
             # TODO: create .desktop entry?
             """
@@ -348,6 +356,10 @@ class AppImage:
                     )
                     self._inject_version_line(
                         applications_path / f"{self.name}.desktop", downloaded_file_name
+                    )
+                    return (
+                        applications_path / f"{self.name}.desktop",
+                        self.base_dir / i,
                     )
 
     def _replace_exec_and_icon_lines(
@@ -421,3 +433,26 @@ class AppImage:
                         "No version found in downloaded file name:",
                         downloaded_file_name,
                     )
+
+    def _inject_wm_class_line(
+        self, desktop_file: Path, original_file_name: Path
+    ) -> None:
+        StartupWMClass = original_file_name.stem
+        print(StartupWMClass)
+        replaced = False
+        print("Injecting wm_class line in .desktop entry")
+        with open(desktop_file, "r") as fr:
+            lines = fr.readlines()
+        with open(desktop_file, "w") as f:
+            for line in lines:
+                if line.startswith("StartupWMClass="):
+                    print("Found StartupWMClass line:", line.strip())
+                    line = f"StartupWMClass={StartupWMClass}\n"
+                    f.write(line)
+                    replaced = True
+                else:
+                    f.write(line)
+            if not replaced:
+                print("No StartupWMClass found in file:", desktop_file)
+                line = f"StartupWMClass={StartupWMClass}\n"
+                f.write(line)
