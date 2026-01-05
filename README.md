@@ -87,4 +87,26 @@ The main entry point is `src/main.py`. You can run it directly with `uv run -m s
 uv run -m src.main "$@"
 ```
 
-Run `uv run -m src.main --help` for more information.
+### Commands
+
+The script provides several commands to manage your AppImages. In all commands, if you do not specify an application name, the command will be run for all applications defined in your `config.toml`.
+
+#### `list`
+
+Lists all the applications that are configured in your `config.toml` file.
+
+#### `install`
+
+Installs one or more applications. The installation process involves downloading the latest AppImage release, extracting it, and creating a desktop entry.
+
+#### `update`
+
+Updates one or more applications. The update process checks for a new version, downloads it, and replaces the existing installation.
+
+#### `version`
+
+Displays the currently installed version of one or more applications.
+
+#### `remove`
+
+Removes one or more applications. This will delete the application directory and its desktop entry.
