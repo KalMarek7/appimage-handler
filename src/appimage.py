@@ -304,8 +304,13 @@ class AppImage:
         try:
             if to_path.exists():
                 shutil.rmtree(to_path)
-            shutil.move(str(from_path), str(to_path))
+            path_to_move = from_path
+            if from_path.is_symlink():
+                path_to_move = from_path.parent / os.readlink(from_path)
+            shutil.move(str(path_to_move), str(to_path))
+            print(f"Moved {path_to_move} to {to_path}")
         except OSError as e:
+            print(f"Unable to move {from_path} to {to_path}: {e}")
             raise Exception(f"Unable to move {from_path} to {to_path}: {e}") from e
 
     def _create_desktop_entry(

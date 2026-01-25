@@ -8,7 +8,7 @@ from src.appimage import AppImage
 from src.config import CONFIG
 
 app = typer.Typer(
-    help="Tool to handle .AppImage updates.",
+    help="Tool to manage .AppImage applications.",
     add_completion=False,
     no_args_is_help=True,
     rich_markup_mode="rich",
