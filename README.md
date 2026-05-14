@@ -4,7 +4,9 @@ A simple CLI tool to manage AppImage applications.
 
 ## Overview
 
-This tool is developed with and for Ubuntu 24.04.3 LTS to automate the process of 'installing', updating and removing AppImage applications. It works by reading a `config.toml` file where you define the applications you want to manage. For each application, it checks for new versions on GitHub or Gitlab latest releases, and if an update is found, it downloads and extracts the new AppImage, replacing the old version.
+This tool is developed with and for Ubuntu to automate the process of 'installing', updating and removing AppImage applications. It works by reading a `config.toml` file where you define the applications you want to manage. For each application, it checks for new versions on GitHub or Gitlab latest releases, and if an update is found, it downloads and extracts the new AppImage, replacing the old version.
+
+Tested on 24 and 26 LTS releases.
 
 ## Features
 
