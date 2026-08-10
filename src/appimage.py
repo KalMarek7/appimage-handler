@@ -22,6 +22,7 @@ class AppImage:
         version_file: Path | None = None,
         version: str | None = None,
         icon: Path | None = None,
+        source_path: Path | None = None,
     ):
         self.name = name
         self.base_dir = base_dir
@@ -29,9 +30,10 @@ class AppImage:
         self.version_file = version_file
         self.version = version
         self.icon = icon
+        self.source_path = source_path
 
     def __repr__(self) -> str:
-        return f"AppImage(name={self.name}, base_dir={self.base_dir}, latest_release_url={self.latest_release_url} version_file={self.version_file}, version={self.version}, icon={self.icon})"
+        return f"AppImage(name={self.name}, base_dir={self.base_dir}, latest_release_url={self.latest_release_url} version_file={self.version_file}, version={self.version}, icon={self.icon}, source_path={self.source_path})"
 
     def __eq__(self, value: object) -> bool:
         if isinstance(value, AppImage):
@@ -42,6 +44,7 @@ class AppImage:
                 and self.version_file == value.version_file
                 and self.version == value.version
                 and self.icon == value.icon
+                and self.source_path == value.source_path
             )
         return False
 
@@ -102,6 +105,15 @@ class AppImage:
             self._inject_wm_class_line(desktop_files[0], desktop_files[1])
         print("Install complete.")
 
+    def install_file(self) -> None:
+        print("Starting install from file...")
+        if self.source_path:
+            self._extract(self.source_path.name)
+            desktop_files = self._create_desktop_entry(self.source_path.name)
+            if desktop_files:
+                self._inject_wm_class_line(desktop_files[0], desktop_files[1])
+                print("Install complete.")
+
     def remove(self) -> None:
         if self.base_dir.exists():
             shutil.rmtree(self.base_dir)
@@ -160,9 +172,8 @@ class AppImage:
             if i.endswith(".desktop"):
                 print(f"Found {i}")
                 return self._get_version_from_file(self.base_dir / i)
-        else:
-            print("No .desktop file found")
-            return None
+        print("No .desktop file found")
+        return None
 
     def _get_version_from_file(self, file_path: Path) -> str | None:
         print(f"Attempting to get version from file: {file_path}")
@@ -268,8 +279,13 @@ class AppImage:
             raise Exception(error_message)
 
     def _extract(self, filename: str) -> str:
-        download_dir = CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
-        path = Path(download_dir).expanduser() / filename
+        if self.source_path:
+            path = self.source_path
+        else:
+            download_dir = (
+                CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
+            )
+            path = Path(download_dir).expanduser() / filename
         print("Extracting", path)
         # --- 1. Set Executable Permission ---
         try:
@@ -365,12 +381,12 @@ class AppImage:
                     # s[0] = f"Exec={self.base_dir}/{self.name}"
                     if (self.base_dir / self.name).exists():
                         s[0] = (
-                            f"Exec={self.base_dir}/{self.name}{'\n' if len(s) == 1 else ''}"
+                            f"Exec={self.base_dir}/{self.name} --no-sandbox %U{'\n' if len(s) == 1 else ''}"
                         )
                         line = " ".join(s)
                     elif (self.base_dir / "AppRun").exists():
                         s[0] = (
-                            f"Exec={self.base_dir}/AppRun{'\n' if len(s) == 1 else ''}"
+                            f"Exec={self.base_dir}/AppRun --no-sandbox %U{'\n' if len(s) == 1 else ''}"
                         )
                         line = " ".join(s)
                 elif line.startswith("Icon="):

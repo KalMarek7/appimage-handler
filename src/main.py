@@ -1,8 +1,9 @@
+import re
+from collections.abc import Callable
 from pathlib import Path
-from typing import Callable, List, Optional
+from typing import Annotated
 
 import typer
-from typing_extensions import Annotated
 
 from src.appimage import AppImage
 from src.config import CONFIG
@@ -42,7 +43,7 @@ def get_app(app_name: str) -> AppImage | None:
 
 
 def _process_apps(
-    app_names: Optional[List[str]],
+    app_names: list[str] | None,
     action_func: Callable[[AppImage], None],
     all_msg: str,
 ):
@@ -79,14 +80,14 @@ def list_apps():
         raise typer.Exit()
 
     typer.echo("Configured applications:")
-    for app_name in apps_config.keys():
+    for app_name in apps_config:
         typer.echo(f"- {app_name}")
 
 
 @app.command(help="Update one or more applications.")
 def update(
     app_names: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Argument(
             help="The names of the apps to update. If not provided, all apps will be updated."
         ),
@@ -106,7 +107,7 @@ def update(
 @app.command(help="Get the currently installed version of one or more applications.")
 def version(
     app_names: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Argument(
             help="The names of the apps to get the version of. If not provided, all apps will be processed."
         ),
@@ -129,7 +130,7 @@ def version(
 @app.command(help="Install one or more applications.")
 def install(
     app_names: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Argument(
             help="The names of the apps to install. If not provided, all apps will be installed."
         ),
@@ -148,10 +149,57 @@ def install(
     )
 
 
+def _derive_app_name(stem: str) -> str:
+    tokens = re.split(r"[-_.\s]+", stem)
+    base = []
+    for token in tokens:
+        if any(c.isdigit() for c in token):
+            break
+        base.append(token)
+    if not base:
+        base = tokens
+    return "".join(base).lower()
+
+
+@app.command(help="Install an application from a local file path.")
+def install_file(
+    filepath: Path,
+    name: Annotated[
+        str | None,
+        typer.Option(help="The app name to use for the installation."),
+    ] = None,
+):
+    """
+    Installs an application using the .AppImage file provided.
+    """
+    typer.echo(f"Attempting to install application from: {filepath}")
+
+    if not filepath.is_file():
+        typer.echo(f"Error: File not found: {filepath}", err=True)
+        raise typer.Exit(1)
+
+    app_name = name or _derive_app_name(filepath.stem)
+    base_dir = Path("~/.local/share") / app_name
+    base_dir = base_dir.expanduser()
+
+    try:
+        app = AppImage(
+            name=app_name,
+            base_dir=base_dir,
+            latest_release_url="",
+            source_path=filepath,
+        )
+        typer.echo(f"Installing {app.name}...")
+        app.install_file()
+
+    except Exception as e:
+        typer.echo(f"Failed to install application from {filepath}: {e}", err=True)
+
+
 @app.command(help="Remove one or more applications.")
 def remove(
     app_names: Annotated[
-        Optional[List[str]],
+        list[str] | None,
         typer.Argument(
             help="The names of the apps to remove. If not provided, all apps will be removed."
         ),
