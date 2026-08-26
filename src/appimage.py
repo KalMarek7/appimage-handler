@@ -14,6 +14,28 @@ from src.config import CONFIG
 
 
 class AppImage:
+    """
+    Class to manage the installation, update, and removal of an AppImage.
+
+    Args:
+        name (str): The name of the application.
+        base_dir (Path): The directory where the AppImage is installed.
+        latest_release_url (str): The URL to check for the latest release.
+        version_file (Path | None, optional): Path to a file containing the version. Defaults to None.
+        version (str | None, optional): The version of the application. Defaults to None.
+        icon (Path | None, optional): Path to the application's icon. Defaults to None.
+        source_path (Path | None, optional): Path to an existing AppImage file for installation. Defaults to None.
+
+    Attributes:
+        name (str): The name of the application.
+        base_dir (Path): The directory where the AppImage is installed.
+        latest_release_url (str): The URL to check for the latest release.
+        version_file (Path | None, optional): Path to a file containing the version. Defaults to None.
+        version (str | None, optional): The version of the application. Defaults to None.
+        icon (Path | None, optional): Path to the application's icon. Defaults to None.
+        source_path (Path | None, optional): Path to an existing AppImage file for installation. Defaults to None.
+    """
+
     def __init__(
         self,
         name: str,
@@ -33,9 +55,24 @@ class AppImage:
         self.source_path = source_path
 
     def __repr__(self) -> str:
+        """
+        Returns a string representation of the AppImage object.
+
+        Returns:
+            str: A string representation of the object.
+        """
         return f"AppImage(name={self.name}, base_dir={self.base_dir}, latest_release_url={self.latest_release_url} version_file={self.version_file}, version={self.version}, icon={self.icon}, source_path={self.source_path})"
 
     def __eq__(self, value: object) -> bool:
+        """
+        Checks if the current AppImage instance is equal to another.
+
+        Args:
+            value (object): The other object to compare.
+
+        Returns:
+            bool: True if the instances are equal, False otherwise.
+        """
         if isinstance(value, AppImage):
             return (
                 self.name == value.name
@@ -49,6 +86,12 @@ class AppImage:
         return False
 
     def get_version(self) -> str | None:
+        """
+        Retrieves the version of the application.
+
+        Returns:
+            str | None: The version of the application, or None if it cannot be determined.
+        """
         if self.version_file:
             return self._get_version_from_file(self.version_file)
 
@@ -65,6 +108,9 @@ class AppImage:
         )
 
     def update(self) -> None:
+        """
+        Updates the application to the latest release.
+        """
         try:
             self.version = self.get_version()
             if not self.version:
@@ -92,6 +138,9 @@ class AppImage:
         print("Update complete.")
 
     def install(self) -> None:
+        """
+        Installs the application from the latest release.
+        """
         latest_release = self._get_latest_release()
         if not latest_release:
             print("Install failed: unable to get latest release information.")
@@ -106,6 +155,9 @@ class AppImage:
         print("Install complete.")
 
     def install_file(self) -> None:
+        """
+        Installs the application from a local file.
+        """
         print("Starting install from file...")
         if self.source_path:
             self._extract(self.source_path.name)
@@ -115,6 +167,9 @@ class AppImage:
                 print("Install complete.")
 
     def remove(self) -> None:
+        """
+        Removes the application and its associated files.
+        """
         if self.base_dir.exists():
             shutil.rmtree(self.base_dir)
             print(f"Removed {self.base_dir}")
@@ -124,6 +179,9 @@ class AppImage:
         print("Done")
 
     def _remove_desktop_entry(self) -> None:
+        """
+        Removes the application's desktop entry.
+        """
         applications_path = Path(
             CONFIG.get("paths", {}).get("desktop", {}).get("path", {})
         ).expanduser()
@@ -135,6 +193,12 @@ class AppImage:
             print(f"{desktop_entry_path} does not exist.")
 
     def _get_version_from_cli(self) -> str | None:
+        """
+        Retrieves the version of the application using a command line interface.
+
+        Returns:
+            str | None: The version of the application, or None if it cannot be determined.
+        """
         print("Running --version")
         path = self.base_dir / self.name
         if not self.base_dir.exists():
@@ -165,6 +229,12 @@ class AppImage:
             return None
 
     def _get_version_from_desktop_file(self) -> str | None:
+        """
+        Retrieves the version of the application from a desktop file.
+
+        Returns:
+            str | None: The version of the application, or None if it cannot be determined.
+        """
         print("No version_file set. Looking for .desktop entry.")
         if not self.base_dir.exists():
             return None
@@ -176,6 +246,15 @@ class AppImage:
         return None
 
     def _get_version_from_file(self, file_path: Path) -> str | None:
+        """
+        Retrieves the version of the application from a specified file.
+
+        Args:
+            file_path (Path): The path to the file.
+
+        Returns:
+            str | None: The version of the application, or None if it cannot be determined.
+        """
         print(f"Attempting to get version from file: {file_path}")
         try:
             with open(file_path) as f:
@@ -198,6 +277,12 @@ class AppImage:
             return None
 
     def _get_latest_release(self) -> dict:
+        """
+        Retrieves the latest release information.
+
+        Returns:
+            dict: The latest release information, or an empty dictionary if it cannot be determined.
+        """
         if not self.latest_release_url:
             print("No latest release url set")
             return {}
@@ -223,6 +308,15 @@ class AppImage:
             return {}
 
     def _get_latest_from_github(self, data: dict) -> dict:
+        """
+        Retrieves the latest release information from a GitHub API response.
+
+        Args:
+            data (dict): The JSON data from the GitHub API.
+
+        Returns:
+            dict: The latest release information.
+        """
         latest_release = {}
         tag_name = data.get("tag_name", "")
         version_match = re.search(r"(?:v)?(\d+(?:\.\d+)+[a-zA-Z]*)", tag_name)
@@ -240,6 +334,15 @@ class AppImage:
         raise Exception("No compatible AppImage found in GitHub release")
 
     def _get_latest_from_gitlab(self, data: dict) -> dict:
+        """
+        Retrieves the latest release information from a GitLab API response.
+
+        Args:
+            data (dict): The JSON data from the GitLab API.
+
+        Returns:
+            dict: The latest release information.
+        """
         latest_release = {}
         tag_name = data.get("tag_name", "")
         version_match = re.search(r"(?:v)?(\d+(?:\.\d+)+[a-zA-Z]*)", tag_name)
@@ -257,6 +360,13 @@ class AppImage:
         raise Exception("No compatible AppImage found in GitLab release")
 
     def _download(self, url: str, filename: str) -> None:
+        """
+        Downloads a file from the specified URL.
+
+        Args:
+            url (str): The URL of the file to download.
+            filename (str): The name under which to save the downloaded file.
+        """
         print(CONFIG.get("paths", {}))
         path = CONFIG.get("paths", {}).get("download", {}).get("path", "/tmp")
         path = Path(path).expanduser() / filename
@@ -279,6 +389,15 @@ class AppImage:
             raise Exception(error_message)
 
     def _extract(self, filename: str) -> str:
+        """
+        Extracts an AppImage file.
+
+        Args:
+            filename (str): The name of the AppImage file.
+
+        Returns:
+            str: A message indicating the extraction location.
+        """
         if self.source_path:
             path = self.source_path
         else:
@@ -315,6 +434,12 @@ class AppImage:
             return f"Extracted to {tmpdir_path}"
 
     def _move_to_base_dir(self, from_path: Path) -> None:
+        """
+        Moves an extracted directory to the base directory.
+
+        Args:
+            from_path (Path): The path of the directory to move.
+        """
         to_path = self.base_dir
         print(f"Moving {from_path} to {to_path}")
         try:
@@ -332,6 +457,15 @@ class AppImage:
     def _create_desktop_entry(
         self, downloaded_file_name: str
     ) -> tuple[Path, Path] | None:
+        """
+        Creates a desktop entry for the application.
+
+        Args:
+            downloaded_file_name (str): The name of the downloaded AppImage file.
+
+        Returns:
+            tuple[Path, Path] | None: A tuple containing the paths to the local and global .desktop files, or None if no .desktop file is found.
+        """
         local_desktop_candidate_path = self.base_dir / f"{self.name}.desktop"
         applications_path = Path(
             CONFIG.get("paths", {}).get("desktop", {}).get("path", {})
@@ -370,6 +504,13 @@ class AppImage:
     def _replace_exec_and_icon_lines(
         self, source_path: Path, destination_path: Path
     ) -> None:
+        """
+        Replaces the Exec and Icon lines in a .desktop file.
+
+        Args:
+            source_path (Path): The path to the source .desktop file.
+            destination_path (Path): The path to the destination .desktop file.
+        """
         print("Replacing Exec and Icon lines in .desktop entry")
         with open(source_path, "r") as f:
             lines = f.readlines()
@@ -400,6 +541,13 @@ class AppImage:
     def _inject_version_line(
         self, desktop_file: Path, downloaded_file_name: str
     ) -> None:
+        """
+        Injects a version line into the .desktop file.
+
+        Args:
+            desktop_file (Path): The path to the .desktop file.
+            downloaded_file_name (str): The name of the downloaded AppImage file.
+        """
         print("Injecting version line in .desktop entry")
         version_match = re.search(r"(\d+(?:\.\d+)+[a-zA-Z]*)", downloaded_file_name)
         if not version_match:
@@ -429,6 +577,13 @@ class AppImage:
     def _inject_wm_class_line(
         self, desktop_file: Path, original_file_name: Path
     ) -> None:
+        """
+        Injects a wm_class line into the .desktop file.
+
+        Args:
+            desktop_file (Path): The path to the .desktop file.
+            original_file_name (Path): The path to the original AppImage file.
+        """
         StartupWMClass = original_file_name.stem
         print(StartupWMClass)
         replaced = False
